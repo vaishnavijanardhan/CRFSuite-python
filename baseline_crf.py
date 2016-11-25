@@ -4,82 +4,82 @@ import glob
 import pycrfsuite
 import sys
 
-def dlg2tags(dialog):
+
+def convertToTag(dialog):
     x = [utt.act_tag for utt in dialog]
     return x
 
-def basic_dlg2feat(dialog):
-    features = []
-    for idx, utt in enumerate(dialog):
-        feature = []
-        if utt.pos:
-            feature = feature + ["POS_" + word.pos for word in utt.pos]
-            feature = feature + ["TOKEN_" + word.token for word in utt.pos]
-        if (idx == 0):
-            feature.append("FEAT_begin")
-        if (idx > 0 and dialog[idx].speaker != dialog[idx-1].speaker):
-            feature.append("FEAT_change_speaker")
-        features.append(feature)
-    return features
-
-def compute_accuracy(ypred, ytrue):
-    acc = 0
+def calculateAccuracy(predLabel, trueLabel):
     count = 0
-    for i in range(len(ypred)):
-        for j in range(len(ypred[i])):
+    accuracy = 0
+    for i in range(len(predLabel)):
+        temp11 = len(predLabel[i])
+        for j in range(temp11):
             count = count + 1
-            if ypred[i][j] == ytrue[i][j]:
-                acc = acc + 1
-    acc = float(acc) / float(count)
-    print("accuracy: %f" % acc)
-    return acc
+            if predLabel[i][j] == trueLabel[i][j]:
+                accuracy = 1 + accuracy
+    accuracy = float(accuracy) / float(count)
+    print("accuracy:{} ".format(accuracy))
+    return accuracy
 
-def train(train_dir, feature_ext_fn, c1=1.0, c2=0.1, nitr=100):
-    print("processing data...")
-    samples = get_data(train_dir)
+def train(inputDIR, funcFeature, c1, c2, total_iterations):
+    samples = get_data(inputDIR)
     trainer = pycrfsuite.Trainer(verbose=True)
-    for idx, dialog in enumerate(samples):
-        if idx+1 % 100 == 0:
-            print("%d dialogs processed" % idx+1)
-        features = feature_ext_fn(dialog)
-        tags = dlg2tags(dialog)
+
+    for index, dialog in enumerate(samples):
+        features = funcFeature(dialog)
+        tags = [utt.act_tag for utt in dialog]
         trainer.append(features, tags)
+
     trainer.set_params({
-        'c1': c1,   # coefficient for L1 penalty
-        'c2': c2,  # coefficient for L2 penalty
-        'max_iterations': nitr,  # stop earlier
+        'c1': c1,
+        'c2': c2,
+        'max_iterations': total_iterations,
         'feature.possible_transitions': True
     })
-    print("start training")
-    trainer.train("model.crfsuite")
-    print("training finished, model saved to model.crfsuite")
 
-def test(test_dir, feature_ext_fn, write_file):
-    print("start testing...")
+    trainer.train("model.crfsuite")
+
+def test(test_dir, funcFeature, write_file):
+    trueLabel = []
+    predLabel = []
+    output = open(write_file, 'w')
     tagger = pycrfsuite.Tagger()
     tagger.open("model.crfsuite")
     dialog_filenames = sorted(glob.glob(os.path.join(test_dir, "*.csv")))
-    ytrue, ypred = [], []
 
     for dialog_filename in dialog_filenames:
         dialog = get_utterances_from_filename(dialog_filename)
-        xseq = feature_ext_fn(dialog)
-        ypred.append(tagger.tag(xseq))
-        ytrue.append(dlg2tags(dialog))
+        xseq = funcFeature(dialog)
+        predLabel.append(tagger.tag(xseq))
+        temp = convertToTag(dialog)
+        trueLabel.append(temp)
 
-    output = open(write_file, 'w')
-    for idx, dialog_filename in enumerate(dialog_filenames):
-        output.write('Filename="%s"\n' % os.path.basename(dialog_filename))
-        for label in ypred[idx]:
-            output.write("%s\n" % label)
+    for index, dialog_filename in enumerate(dialog_filenames):
+        output.write('Filename="{}"\n'.format(os.path.basename(dialog_filename)))
+        for label in predLabel[index]:
+            output.write(label + "\n")
         output.write("\n")
     output.close()
-    print("testing finished, results saved in %s." % write_file)
 
-    if None not in ytrue:
-        print("true labels found, calculating accuracy...")
-        return compute_accuracy(ypred, ytrue)
+    if (not(None in trueLabel)):
+        return calculateAccuracy(predLabel, trueLabel)
 
-train(sys.argv[1], basic_dlg2feat, 1.0, 0.1, 100)
+def func_baseline(dialog):
+    features = []
+    for index, utt in enumerate(dialog):
+        feature = []
+        if (index == 0):
+            feature.append("FirstUtt")
+        if (dialog[index].speaker != dialog[index-1].speaker and index > 0):
+            feature.append("Speaker_Changed")
+        if utt.pos:
+            feature = feature + ["PartOfSpeech" + word.pos for word in utt.pos]
+        if utt.pos:
+            feature = feature + ["Token" + word.token for word in utt.pos]
+        features.append(feature)
+    return features
+
+train(sys.argv[1], func_baseline, 1.0, 0.1, 100)
 write_file = sys.argv[3]
-test(sys.argv[2], basic_dlg2feat, write_file)
+test(sys.argv[2], func_baseline, write_file)
