@@ -1,0 +1,23 @@
+Assignment 3 Report
+
+Name: Vaishnavi Janardhan
+
+1. If you included files other than baseline_crf.py, advanced_crf.py, evaluate_model.py, and hw3_corpus_tool.py, or modified hw3_corpus_tool.py please describe what the files do and/or your modifications to hw3_corpus_tool.py.
+    Haven’t included/modified any files.
+
+2. Describe how you evaluated your baseline and advanced features
+    Used 75-25 split; 75% of the data was used for training and 25% for testing. This was selected manually, at random.
+    The features will print on the console.
+
+3. Describe your advanced feature set.
+    The following tags were used in advanced features in addition to the four tags from baseline features:
+        1) Question_Tag - Whenever there is a "?" in the utterance, I tag it as a question
+        2) Answer_tag -  Tag it is an answer if preceeded by a Question.
+        3) Bigrams and Trigrams
+        4) Length of Utterance
+
+4. If you tried alternate advanced feature sets, please describe them.
+    N/A
+
+5. Accuracy of baseline features was: 72.34%
+6. Accuracy of advanced features was: 73.62%
