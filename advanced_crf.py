@@ -8,10 +8,10 @@ def func_advanced(dialog):
     features = []
     for index, utt in enumerate(dialog):
         feature = {}
-        if index > 0 and dialog[index].speaker != dialog[index-1].speaker:
-            feature["Speaker_Changed"] = 1
         if index == 0:
             feature["FirstUtt"] = 1
+        if index > 0 and not(dialog[index].speaker == dialog[index-1].speaker):
+            feature["Speaker_Changed"] = 1
         if (utt.pos):
             tokens = [word.token for word in utt.pos]
             feature['Token'] = tokens
@@ -19,13 +19,14 @@ def func_advanced(dialog):
             feature['PartOfSpeech'] = lis_t
             leng_t = len(utt.pos)
             feature['Length'] = leng_t
+            feature['START_WITH'] = utt.pos[0].token
+            bigrams = list(zip(tokens[:-1], tokens[1:]))
+            lis_t1 = [x+"_"+y for x, y in bigrams]
+            feature['BiGram'] = lis_t1
             if(utt.pos[-1].token == '?'):
                 feature['Statement'] = 'Question'
             else:
                 feature['Statement'] = 'Answer'
-            bigrams = list(zip(tokens[:-1], tokens[1:]))
-            lis_t1 = [x+"_"+y for x, y in bigrams]
-            feature['BiGram'] = lis_t1
             trigrams = list(zip(tokens[:-2], tokens[2:]))
             feature['TriGram'] = ["_".join(tri) for tri in trigrams]
         else:
@@ -42,7 +43,7 @@ def train(train_dir, feature_ext_fn, c1, c2, total_iterations):
         features = feature_ext_fn(dialog)
         tags = [utt.act_tag for utt in dialog]
         trainer.append(features, tags)
-
+    i = 0
     trainer.set_params({
         'c1': c1,
         'c2': c2,
